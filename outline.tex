@@ -1,0 +1,219 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{mathpartir}
+\usepackage{bussproofs}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{stmaryrd}
+\usepackage{syntax}
+
+\begin{document}
+
+\section{Type Definitions}
+
+\begin{grammar}
+  <n> ::= 1
+    \alt S <n>
+
+  <x> ::= <ident>
+
+  <t> ::= n | x
+
+  <b> ::= <b> \(\vee\) <b>
+    \alt <b> \(\wedge\) <b>
+    \alt <b> \(\supset\) <b>
+    \alt \(\neg\) <b>
+    \alt \(\exists\) <x> . <b>
+    \alt \(\forall\) <x> . <b>
+
+  <A> ::= \(\epsilon\)
+    \alt <A>, <b>
+
+  <s> ::= <A> \(\vdash\) <b>
+
+  <D> ::= \(\epsilon\)
+    \alt <s>, <D>
+\end{grammar}
+
+Let $f$ be a countable set of primitive arithmetic functions over
+$n$. Let $p$ be a countable set of primitive predicates over $b$.  A
+\textbf{minimal term} is a single function ($f$) applied to numerals
+($n$). A \textbf{minimal formula} is a single predicate ($p$) applied
+to numerals. $s$ is a sequent. A \textbf{derivation} ($D$) is a
+list of sequents.
+
+\section{Inference Rules}
+
+\begin{prooftree}
+
+\AxiomC{$A_1, A_2 \vdash b$}
+\RightLabel{\tiny interchange}
+\UnaryInfC{$A_2, A_1 \vdash b$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1, A_2, A_2 \vdash b$}
+\RightLabel{\tiny omit}
+\UnaryInfC{$A_1, A_2, \vdash b$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1, A_2, A_3 \vdash b$}
+\RightLabel{\tiny conjunction}
+\UnaryInfC{$A_1, A_2 \wedge A_3 \vdash b$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1 \vdash b_1$}
+\AxiomC{$A_2 \vdash b_2$}
+\RightLabel{\tiny $\wedge$ introduction}
+\BinaryInfC{$A_1, A_2 \vdash b_1 \wedge b_2$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash b_1 \wedge b_2$}
+\RightLabel{\tiny $\wedge$ elimination (L)}
+\UnaryInfC{$A \vdash b_1$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash b_1 \wedge b_2$}
+\RightLabel{\tiny $\wedge$ elimination (R)}
+\UnaryInfC{$A \vdash b_2$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash b_2$}
+\RightLabel{\tiny $\vee$ introduction (L)}
+\UnaryInfC{$A \vdash b_1 \textbar b_2$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash b_1$}
+\RightLabel{\tiny $\vee$ introduction (R)}
+\UnaryInfC{$A \vdash b_1 \textbar b_2$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1 \vdash b_1 \vert b_2$}
+\AxiomC{$A_2, b_1 \vdash b_3$}
+\AxiomC{$A_3, b_2 \vdash b_3$}
+\RightLabel{\tiny $\vee$ elimination}
+\TrinaryInfC{$A_1, A_2, A_3 \vdash b_3$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash p(a)$}
+\AxiomC{$a$ does not occur in $A$}
+\RightLabel{\tiny $\forall$ introduction}
+\BinaryInfC{$A \vdash \forall x . p(x)$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash \forall x . p(x)$}
+\RightLabel{\tiny $\forall$ elimination}
+\UnaryInfC{$A \vdash p(a)$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash p(a)$}
+\RightLabel{\tiny $\exists$ introduction}
+\UnaryInfC{$A \vdash \exists x . p(x)$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1 \vdash \exists x . p(x)$}
+\AxiomC{$p(a), A_2 \vdash b$}
+\AxiomC{$a$ does not occur in $A_1, A_2,$ nor $\exists x . p(x)$}
+\RightLabel{\tiny $\exists$ introduction}
+\TrinaryInfC{$A_1, A_2 \vdash b$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1, A_2 \vdash b$}
+\RightLabel{\tiny $\supset$ introduction}
+\UnaryInfC{$A \vdash \exists x . p(x)$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1 \vdash b_1$}
+\AxiomC{$A_2 \vdash b_1 \supset b_2$}
+\RightLabel{\tiny $\supset$ elimination}
+\BinaryInfC{$A_1, A_2 \vdash b_2$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1, A_2 \vdash b$}
+\AxiomC{$A_1, A_3 \vdash \neg b$}
+\RightLabel{\tiny reductio}
+\BinaryInfC{$A_2, A_3 \vdash \neg A_1$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A \vdash \neg \neg b$}
+\RightLabel{\tiny double negation}
+\UnaryInfC{$A \vdash b$}
+
+\end{prooftree}
+
+\begin{prooftree}
+
+\AxiomC{$A_1 \vdash p(1)$}
+\AxiomC{$p(a), A_2 \vdash p(a+1)$}
+\AxiomC{$a$ does not occur in $A_1, A_2, p(1),$ and $p(t)$}
+\RightLabel{\tiny complete induction}
+\TrinaryInfC{$A \vdash p(t)$}
+
+\end{prooftree}
+
+\section{Proof outline}
+
+\begin{enumerate}
+  \item Prove $\vee$, $\exists$, and $\supset$ can be eliminated from
+    any derivation (P12).
+  \item Show stability of the reduction rules (P13).
+  \item Add chain rule to replace structural rules, assert new order
+    over derivations. (P14.1)
+  \item Define $reduction$. (P14.2)
+  \item Show that the $lfp(reduction)$ exists and is finite (P15).
+  \item Drop mic, exit stage left.
+\end{enumerate}
+
+
+\end{document}

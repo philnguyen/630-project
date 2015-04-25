@@ -1,4 +1,4 @@
-Require Export Lib.
+Require Import Lib.
 Require Import Relation_Definitions Setoid.
 
 Module Expressions.

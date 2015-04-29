@@ -3,12 +3,15 @@ Require Import Relation_Definitions Setoid.
 
 Module Expressions.
 
+  Require Export Heyting.
+  Export HeytingTerms.
+
 (* Expressions, as defined in Kanckos section 5.1 *)
 Inductive expr : Set :=
 | E0 : expr
 | E1 : expr
 | Eω : expr
-(* TODO: variables *)
+| EX : X -> expr
 | Eplus : expr -> expr -> expr
 | Epair : expr -> expr -> expr.
 
@@ -16,7 +19,6 @@ Notation "( e1 , e2 )" := (Epair e1 e2).
 Notation "e1 # e2"     := (Eplus e1 e2) (at level 50, left associativity).
 
 Inductive eeq : expr -> expr -> Prop :=
-(* TODO missing <- in iff for axiom 5 *)
 | eeq_refl  : forall f,     eeq f f                            (* text *)
 | eeq_pluss : forall f g,   eeq (f # g) (g # f)                (* 3 *)
 | eeq_plust : forall f g h, eeq ((f # g) # h) (f # (g # h))    (* 3 *)
@@ -66,7 +68,7 @@ Inductive elt : expr -> expr -> Prop :=
 | elt_plus  : forall f g h, elt f g -> elt (f # h) (g # h)     (* 4 *)
 | elt_lim   : forall f g, elt f Eω -> elt g Eω
                           -> elt (f # g) Eω                    (* 7 *)
-| elt_pair1 : forall f g h, elt f g -> elt (f, h) (g, h)       (* 10 *)
+| elt_pair1 : forall f g h, elt f g -> elt (h, f) (h, g)       (* 10 *)
 | elt_pair2 : forall f g h, elt f g -> elt E0 h
                             -> elt (f, h) (g, h)               (* 11 *)
 .

@@ -2,23 +2,18 @@ Require Import Lib.
 
 Module HeytingTerms.
 
-  (* Numerals *)
-  Inductive ℕ: Set :=
-  | O: ℕ
-  | S: ℕ -> ℕ.
-
   (* Variables, identified by natural numbers *)
   Definition X := nat.
 
   (* Terms *)
   Inductive T: Set :=
-  | Nat: ℕ -> T
+  | Nat: nat -> T
   | Var: X -> T
   | Plus: T -> T -> T
   | Mult: T -> T -> T
   | Suc : T -> T.  (* note that Kanckos defines succ for both nats and terms *)
 
-  Check S (S O) :                   ℕ.
+  Check S (S O) :                   nat.
   Check Nat (S (S O)):              T.
   Check Var 3:                      T.
   Check Suc (Plus (Var 0) (Nat O)): T.

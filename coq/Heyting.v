@@ -267,18 +267,12 @@ Module HeytingProps.
   Definition dv1 := p_arith (n0 + n0) (n1 * n0).
   Definition dv2 := p_arith v0 n0.
   Print dv1. Print dv2.
-  Definition dv12 := p_oril (Disj dv1 dv2).
+(*  Definition dv12 := p_oril (Disj dv1 dv2). *)
 
   Definition t2a := Nat (S (S O)).
   Definition t2b := (Nat (S O) + Nat (S O))%hterm.
   Definition eq2rec := t_plus_rec t2a t2b.
   Definition proves2 := p_arith t2a t2b.
-
-  Print eq2.
-  Print eq2rec.
-
-  Print proves_ind.
-  Print proves_rect.
 
   (*
 
@@ -311,7 +305,7 @@ End HeytingProps.
 Module TestHeytingProps.
   (* Unit tests for HeytingProps. *)
 
-  Require HeytingProps.
+  Import HeytingProps.
 
   Theorem test_unbound_1 : unbound atom1 0.
   Proof. apply ub_teq. Qed.

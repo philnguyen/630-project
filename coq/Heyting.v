@@ -2,9 +2,14 @@ Require Import Lib.
 
 Module HeytingTerms.
 
-  (* Variables, identified by natural numbers *)
+  (*************************************************)
+  (* Identifiers *)
+
+  (* Identifiers are indexed by natural numbers *)
   Definition X := nat.
 
+  (* Decidability of identifier equality; this is identical to a similar theorem
+   * for nats in Coq's standard library. *)
   Theorem eq_id_dec : forall x y : X, {x = y} + {x <> y}.
   Proof.
     intros x. induction x as [|x'].
@@ -17,9 +22,14 @@ Module HeytingTerms.
     SSCase "x' = y'". subst. left. reflexivity.
     SSCase "x' <> y'". right. unfold not in neq. intros c. inversion c.
       apply neq. apply H0.
-  Qed.
+  Defined.
 
+  (*************************************************)
   (* Terms *)
+
+  (* Terms may be nats, variables, +, *, and successor. Note that Kanckos
+   * defines successor for both numerals and terms; this is important because
+   * it's used to find inconsistencies (∀t, Suc t ⊃ 0 ⇒ ⊥).  *)
   Inductive T: Set :=
   | Nat: nat -> T
   | Var: X -> T
@@ -27,22 +37,17 @@ Module HeytingTerms.
   | Mult: T -> T -> T
   | Suc : T -> T.  (* note that Kanckos defines succ for both nats and terms *)
 
-  Check S (S O) :                   nat.
-  Check Nat (S (S O)):              T.
-  Check Var 3:                      T.
-  Check Suc (Plus (Var 0) (Nat O)): T.
-
   Notation "t1 + t2"  := (Plus t1 t2)
                            (at level 50, left associativity) : hterm_scope.
   Notation "t1 * t2"  := (Mult t1 t2)
                            (at level 40, left associativity) : hterm_scope.
 
   Bind Scope hterm_scope with T.  (* this doesn't help too much *)
-  Delimit Scope hterm_scope with hterm. (* but this does, see below *)
+  Delimit Scope hterm_scope with hterm. (* needed when a term isn't a fn arg *)
 
-  Check (3 + 3)                     : nat.
-  Check ((Nat O + Nat O)%hterm)     : T.
-  Check (Suc (Nat O + Nat O))%hterm : T.
+  (*************************************************)
+  (* Decidability of term equality. Note that this is syntactic equality:
+   * Nat O + Nat O is not the same as Nat O. *)
 
   Tactic Notation "hterm_cases" tactic(first) ident(c) :=
     first;
@@ -108,7 +113,7 @@ Module HeytingTerms.
     Case "Suc". destruct IHt1 with (t2 := t2).
     SSCase "eq". left. subst. reflexivity.
     SSCase "neq". right. intros c. inversion c. apply n. apply H0.
-  Qed.
+  Defined.
 
   (* Substitution: var <-> term *)
   Fixpoint subst_t (x : X) (value : T) (term : T) : T :=
@@ -129,31 +134,68 @@ Module HeytingTerms.
         | _ => term
       end.
 
+  (*************************************************)
+
+  (* Arithmetic Equality *)
+  Open Scope hterm_scope.
+
+  (* Equality rules from Kanckos page 3, except for Inf1, defined below. *)
+  Inductive eqha : T -> T -> Set :=
+  | t_refl    : forall t, eqha t t
+  | t_symm    : forall t1 t2, eqha t1 t2 -> eqha t2 t1
+  | t_trans   : forall t1 t2 t3, eqha t1 t2 -> eqha t2 t3 -> eqha t1 t3
+  | t_plus_id : forall t, eqha (t + Nat O) t
+  | t_plus_rec: forall t1 t2, eqha (t1 + Suc(t2)) (Suc(t1 + t2))
+  | t_mult_0  : forall t, eqha (t * Nat O) (Nat O)
+  | t_mult_rec: forall t1 t2, eqha (t1 * Suc(t2)) (t1 + (t1 * t2))
+  | t_rep_s   : forall t1 t2, eqha t1 t2 -> eqha (Suc t1) (Suc t2)
+  | t_rep_plus_l : forall t1 t2 t3, eqha t1 t2 -> eqha (t1 + t3) (t2 + t3)
+  | t_rep_plus_r : forall t1 t2 t3, eqha t2 t3 -> eqha (t1 + t2) (t1 + t3)
+  | t_rep_mult_l : forall t1 t2 t3, eqha t1 t2 -> eqha (t1 * t3) (t2 * t3)
+  | t_rep_mult_r : forall t1 t2 t3, eqha t2 t3 -> eqha (t1 * t2) (t1 * t3)
+  | t_inf2    : forall t1 t2, eqha (Suc t1) (Suc t2) -> eqha t1 t2
+  | t_suc     : forall n, eqha (Nat (S n)) (Suc (Nat n)).
+
+  (* Kanckos also includes a proof of falsity, if Suc t = 0. This will be
+   * included in the later definition of formulas Φ. *)
+
+  Definition n0 := Nat O.
+  Definition n1 := Suc n0.
+  Definition n2 := Suc n1.
+  Definition v0 := Var 0.
+  Definition v1 := Var 1.
+  Definition v2 := Var 2.
+
+  (* Some example arithmetic derivations. *)
+  Fact haf1 : eqha (n0 + n0) (n1 * n0).
+  Proof.
+    apply t_trans with (t2 := n0).
+    apply t_plus_id.
+    apply t_symm. apply t_mult_0.
+  Defined.
+  Print haf1.
+
+  Lemma plus_id_r : forall t : T, eqha t (t + n0).
+  Proof.
+    intros t. apply t_symm. apply t_plus_id.
+  Qed.
+  Print plus_id_r.
+
+  Lemma mult1 : forall t:T, eqha (t*n1) t.
+  Proof.
+    intros t. unfold n1. apply t_trans with (t2:=t+(t*n0)).
+    apply t_mult_rec. apply t_trans with (t2:=t+n0).
+    apply t_rep_plus_r. apply t_mult_0.
+    apply t_plus_id.
+  Qed.
+  Print mult1.
+
 End HeytingTerms.
 
 Module HeytingProps.
 
   Export HeytingTerms.
   Require Export List.
-
-  (* Arithmetic Equality *)
-  Open Scope hterm_scope.
-
-  (* Equality rules from Kanckos page 3, except for Inf1, defined below. *)
-  Inductive aderiv : T -> T -> Set :=
-  | t_refl    : forall t, aderiv t t
-  | t_symm    : forall t1 t2, aderiv t1 t2 -> aderiv t2 t1
-  | t_trans   : forall t1 t2 t3, aderiv t1 t2 -> aderiv t2 t3 -> aderiv t1 t3
-  | t_plus_id : forall t, aderiv (t + Nat O) t
-  | t_plus_rec: forall t1 t2, aderiv (t1 + Suc(t2)) (Suc(t1 + t2))
-  | t_mult_0  : forall t, aderiv (t * Nat O) (Nat O)
-  | t_mult_rec: forall t1 t2, aderiv (t1 * Suc(t2)) ((t1 * t2) + t1)
-  | t_rep_s   : forall t1 t2, aderiv t1 t2 -> aderiv (Suc t1) (Suc t2)
-  | t_rep_plus_l : forall t1 t2 t3, aderiv t1 t2 -> aderiv (t1 + t3) (t2 + t3)
-  | t_rep_plus_r : forall t1 t2 t3, aderiv t2 t3 -> aderiv (t1 + t2) (t1 + t3)
-  | t_rep_mult_l : forall t1 t2 t3, aderiv t1 t2 -> aderiv (t1 * t3) (t2 * t3)
-  | t_rep_mult_r : forall t1 t2 t3, aderiv t2 t3 -> aderiv (t1 * t2) (t1 * t3)
-  | t_inf2    : forall t1 t2, aderiv (Suc t1) (Suc t2) -> aderiv t1 t2.
 
 
   (* Formulas and Atomic Propositions *)
@@ -177,24 +219,6 @@ Module HeytingProps.
     [Case_aux c "bot" | Case_aux c "teq" | Case_aux c "disj" | Case_aux c "conj"
      | Case_aux c "imp" | Case_aux c "ex" | Case_aux c "all"].
 
-  (* atomic propositions for use in testing *)
-  Definition n0 := Nat O.
-  Definition n1 := Suc n0.
-  Definition n2 := Suc n1.
-  Definition v0 := Var 0.
-  Definition v1 := Var 1.
-  Definition v2 := Var 2.
-  Definition atom1 := teq (n0 + n0) (n1 * n0).
-  Definition atom2 := teq (Suc v0) n0.
-  Definition atom3 := teq v0 v1.
-  Definition atom4 := teq n2 (v1 + v2).
-  Check atom1 : Φ.
-  Check atom2 : Φ.
-  Check atom3 : Φ.
-  Check atom4 : Φ.
-
-  (* TODO proof of falsity: forall n, teq (Suc n) (O) -> false *)
-  (* I'll implement that as a separate Set alongside "proves" *)
 
   Fixpoint subst_φ (x : X) (t : T) (φ : Φ) : Φ :=
     match φ with
@@ -234,7 +258,6 @@ Module HeytingProps.
 
 
   (* Logical Rules and Derivations *)
-
   (* structure for derivation trees *)
   Inductive proves: Φ -> Set :=
   | p_bot   : forall φ, proves bot -> proves φ
@@ -245,7 +268,7 @@ Module HeytingProps.
   | p_orir  : forall φ1 φ2, proves φ2 -> proves (Disj φ1 φ2)
   | p_ore   : forall φ1 φ2 φ3, proves (Disj φ1 φ2) -> proves_mstep φ1 φ3
                                -> proves_mstep φ2 φ3 -> proves φ3
-  | p_indi  : forall φ1 φ2, proves_mstep φ1 φ2 -> proves (Imp φ1 φ2)
+  | p_impi  : forall φ1 φ2, proves_mstep φ1 φ2 -> proves (Imp φ1 φ2)
   | p_impe  : forall φ1 φ2, proves (Imp φ1 φ2) -> proves φ1 -> proves φ2
   | p_alli  : forall φ x, proves φ -> unbound φ x -> proves (All x φ)
   | p_alle  : forall φ x t, proves (All x φ) -> proves (subst_φ x t φ)
@@ -253,52 +276,27 @@ Module HeytingProps.
   | p_exe   : forall φ1 x t φ2, proves (Ex x φ1)
                                 -> proves_mstep (subst_φ x t φ1) φ2
                                 -> proves φ2
-  | p_arith : forall φ1 φ2, aderiv φ1 φ2 -> proves (teq φ1 φ2)
+  | p_arith : forall t1 t2, eqha t1 t2 -> proves (teq t1 t2)
   | p_ind   : forall φ x t, proves (subst_φ x (Nat O) φ)
                             -> proves_mstep φ (subst_φ x (Suc (Var x)) φ)
                             -> proves (subst_φ x t φ)
+  | p_false : forall t, proves (teq (Suc t) (Nat O)) -> proves bot
 
-  (* relation indicating that A proves B in multiple steps *)
+  (* relation indicating that A proves B in multiple steps - problem! *)
   with proves_mstep : Φ -> Φ -> Set :=
-  (* TODO this is broken, I'm not thinking right somehow *)
-  | ps_base : forall p, proves p -> proves_mstep p p
-  | ps_step : forall φ1 φ2, proves φ1 -> proves φ2 -> proves_mstep φ1 φ2.
+  | ps_base : forall φ1 φ2, proves φ1 -> proves φ2 -> proves_mstep φ1 φ2
+  | ps_step : forall φ1 φ2 φ3, proves φ1 -> proves φ2 ->
+                               (proves_mstep φ2 φ3) -> (proves_mstep φ1 φ3).
 
-  Definition dv1 := p_arith (n0 + n0) (n1 * n0).
-  Definition dv2 := p_arith v0 n0.
-  Print dv1. Print dv2.
-(*  Definition dv12 := p_oril (Disj dv1 dv2). *)
+  Definition atom1 := p_arith (n0+n0) (n1*n0) haf1.
+  Print atom1.
 
-  Definition t2a := Nat (S (S O)).
-  Definition t2b := (Nat (S O) + Nat (S O))%hterm.
-  Definition eq2rec := t_plus_rec t2a t2b.
-  Definition proves2 := p_arith t2a t2b.
+  Definition ex_disj := p_oril (teq (n0+n0) (n1*n0)) bot atom1.
+  Print ex_disj.
 
-  (*
+  Eval compute in ex_disj.
 
-  (* Unused function definitions *)
 
-  Fixpoint bound_vars (φ : Φ) : list X :=
-    match φ with
-      | Ex x φ
-      | All x φ => x::(bound_vars φ)
-      | Disj φ1 φ2
-      | Conj φ1 φ2
-      | Imp φ1 φ2 => (bound_vars φ1) ++ (bound_vars φ2)
-      | _ => nil
-    end.
-
-  Fixpoint unbound_f (φ : Φ) (x : X) : Prop :=
-    match φ with
-      | Ex x' φ
-      | All x' φ =>
-        if eq_id_dec x x' then True else unbound_f φ x
-      | Disj φ1 φ2
-      | Conj φ1 φ2
-      | Imp φ1 φ2 => (unbound_f φ1 x) /\ (unbound_f φ2 x)
-      | _ => True
-    end.
-*)
 
 End HeytingProps.
 
